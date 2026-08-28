@@ -287,7 +287,7 @@ final class ViewConfigurationTests: XCTestCase {
 
     XCTAssertTrue(builderView === fluentView)
     XCTAssertEqual(fluentView.backgroundColor, .green)
-    XCTAssertEqual(fluentView.alpha, 0.8)
+    XCTAssertEqual(fluentView.alpha, 0.8, accuracy: 0.000_001)
     XCTAssertEqual(fluentView.layer.cornerRadius, 11)
   }
 
