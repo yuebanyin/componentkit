@@ -1,0 +1,128 @@
+name: View manager cleanup validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ci/view-manager-validation-755b9bad
+
+permissions:
+  contents: read
+
+jobs:
+  focused-tests:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - name: Check out validation revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Select Xcode and report simulator toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -d /Applications/Xcode_14.3.1.app ]]; then
+            sudo xcode-select --switch /Applications/Xcode_14.3.1.app/Contents/Developer
+          elif [[ -d /Applications/Xcode_14.3.app ]]; then
+            sudo xcode-select --switch /Applications/Xcode_14.3.app/Contents/Developer
+          fi
+          xcodebuild -version
+          xcrun simctl list devices available
+
+      - name: Build OCMock simulator framework
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p Carthage/Build/iOS
+          xcodebuild build \
+            -project Carthage/Checkouts/ocmock/Source/OCMock.xcodeproj \
+            -target 'OCMock iOS' \
+            -configuration Release \
+            -sdk iphonesimulator \
+            IPHONEOS_DEPLOYMENT_TARGET=12.0 \
+            CODE_SIGNING_ALLOWED=NO \
+            CONFIGURATION_BUILD_DIR="$PWD/Carthage/Build/iOS"
+          test -d Carthage/Build/iOS/OCMock.framework
+          file Carthage/Build/iOS/OCMock.framework/OCMock
+
+      - name: Prove candidate green, parent metrics red, and parent multi-view behavior green
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          candidate=755b9bad8554af3dfbccc9b8644be787bde7b694
+          parent=7344753038fbd76d80e46813425e508a37074933
+          git diff --exit-code "$candidate" -- \
+            RenderCore/View/ComponentViewManager.mm \
+            ComponentKitTests/CKComponentViewManagerTests.mm
+
+          device_id="$({ xcrun simctl list devices available --json || true; } | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          for runtime, devices in data["devices"].items():
+              if "iOS" not in runtime:
+                  continue
+              for device in devices:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      raise SystemExit
+          raise SystemExit("No available iPhone simulator")
+          ')"
+          xcrun simctl boot "$device_id" 2>/dev/null || true
+          xcrun simctl bootstatus "$device_id" -b
+
+          common_args=(
+            test
+            -project ComponentKit.xcodeproj
+            -scheme ComponentKit
+            -sdk iphonesimulator
+            -destination "platform=iOS Simulator,id=$device_id"
+            -configuration Debug
+            CODE_SIGNING_ALLOWED=NO
+            COMPILER_INDEX_STORE_ENABLE=NO
+            GCC_TREAT_WARNINGS_AS_ERRORS=NO
+            IPHONEOS_DEPLOYMENT_TARGET=12.0
+            'OTHER_CPLUSPLUSFLAGS=$(inherited) -include utility'
+          )
+
+          echo '=== Candidate: complete CKComponentViewManagerTests must pass ==='
+          xcodebuild "${common_args[@]}" \
+            -resultBundlePath "$RUNNER_TEMP/candidate.xcresult" \
+            -only-testing:ComponentKitTests/CKComponentViewManagerTests \
+            | tee "$RUNNER_TEMP/candidate.log"
+
+          echo '=== Substitute the exact parent implementation while retaining regression tests ==='
+          git checkout "$parent" -- RenderCore/View/ComponentViewManager.mm
+          git diff --exit-code "$parent" -- RenderCore/View/ComponentViewManager.mm
+
+          expect_metric_failure() {
+            local method="$1"
+            local log="$RUNNER_TEMP/${method}.log"
+            set +e
+            xcodebuild "${common_args[@]}" \
+              -only-testing:"ComponentKitTests/CKComponentViewManagerTests/${method}" \
+              >"$log" 2>&1
+            local status=$?
+            set -e
+            cat "$log"
+            if [[ $status -eq 0 ]]; then
+              echo "Parent implementation unexpectedly passed ${method}" >&2
+              return 1
+            fi
+            grep -F "$method" "$log" | grep -F 'failed'
+            grep -E 'failed: \("100"\) is not equal to \("0"\)' "$log"
+          }
+
+          echo '=== Parent implementation: each metric must fail with 100 rather than 0 ==='
+          expect_metric_failure testThatCleanupWithNoVendedViewsDoesNotEnumerateSubviews
+          expect_metric_failure testThatCleanupWithOneVendedViewDoesNotEnumerateSubviews
+
+          echo '=== Parent implementation: existing multi-view tests must remain green ==='
+          xcodebuild "${common_args[@]}" \
+            -resultBundlePath "$RUNNER_TEMP/parent-multi-view.xcresult" \
+            -only-testing:ComponentKitTests/CKComponentViewManagerTests/testThatComponentViewManagerReordersViewsIfOrderSwapped \
+            -only-testing:ComponentKitTests/CKComponentViewManagerTests/testThatComponentViewManagerDoesNotUnnecessarilyReorderViews \
+            | tee "$RUNNER_TEMP/parent-multi-view.log"
