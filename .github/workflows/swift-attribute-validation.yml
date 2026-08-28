@@ -53,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          candidate=d210779700494f5de08a8cdf65e832f5d2da92fe
+          candidate=df4eaa750e7ffeaa3ed951c09359a88bcc1e517d
           parent=bccb9a416f62f055c439c3ec5646362afebc1239
           test_class=CKSwiftTests/ViewConfigurationTests
           implementation_files=(
