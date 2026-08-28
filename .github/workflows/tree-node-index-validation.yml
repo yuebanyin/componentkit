@@ -1,0 +1,144 @@
+name: Tree node key index validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ci/tree-node-index-validation-a6fef71e
+
+permissions:
+  contents: read
+
+jobs:
+  focused-tests:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - name: Check out validation revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Select Xcode and report simulator toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -d /Applications/Xcode_14.3.1.app ]]; then
+            sudo xcode-select --switch /Applications/Xcode_14.3.1.app/Contents/Developer
+          elif [[ -d /Applications/Xcode_14.3.app ]]; then
+            sudo xcode-select --switch /Applications/Xcode_14.3.app/Contents/Developer
+          fi
+          xcodebuild -version
+          xcrun simctl list devices available
+
+      - name: Build OCMock simulator framework
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p Carthage/Build/iOS
+          xcodebuild build \
+            -project Carthage/Checkouts/ocmock/Source/OCMock.xcodeproj \
+            -target 'OCMock iOS' \
+            -configuration Release \
+            -sdk iphonesimulator \
+            IPHONEOS_DEPLOYMENT_TARGET=12.0 \
+            CODE_SIGNING_ALLOWED=NO \
+            CONFIGURATION_BUILD_DIR="$PWD/Carthage/Build/iOS"
+          test -d Carthage/Build/iOS/OCMock.framework
+          file Carthage/Build/iOS/OCMock.framework/OCMock
+
+      - name: Prove candidate green and parent performance red
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          candidate=bccb9a416f62f055c439c3ec5646362afebc1239
+          parent=b0391cc34d2f6dfee4ed55a55bb358d77b92a417
+          test_class=ComponentKitTests/CKTreeNodeTests
+          changed_files=(
+            ComponentKit/Core/ComponentTree/CKTreeNode.h
+            ComponentKit/Core/ComponentTree/CKTreeNode.mm
+            ComponentKitTests/CKTreeNodeTests.mm
+          )
+          git diff --exit-code "$candidate" -- "${changed_files[@]}"
+          test "$(git diff --name-only "$parent" "$candidate" | sort | tr '\n' ' ')" = \
+            "$(printf '%s\n' "${changed_files[@]}" | sort | tr '\n' ' ')"
+
+          device_id="$({ xcrun simctl list devices available --json || true; } | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          for runtime, devices in data["devices"].items():
+              if "iOS" not in runtime:
+                  continue
+              for device in devices:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      raise SystemExit
+          raise SystemExit("No available iPhone simulator")
+          ')"
+          xcrun simctl boot "$device_id" 2>/dev/null || true
+          xcrun simctl bootstatus "$device_id" -b
+
+          common_args=(
+            test
+            -project ComponentKit.xcodeproj
+            -scheme ComponentKit
+            -sdk iphonesimulator
+            -destination "platform=iOS Simulator,id=$device_id"
+            -configuration Debug
+            CODE_SIGNING_ALLOWED=NO
+            COMPILER_INDEX_STORE_ENABLE=NO
+            GCC_TREAT_WARNINGS_AS_ERRORS=NO
+            IPHONEOS_DEPLOYMENT_TARGET=12.0
+            'OTHER_CPLUSPLUSFLAGS=$(inherited) -include utility'
+          )
+          methods=(
+            test_createKeyForOneHundredSameTypeSiblings_usesAtMostTwoHundredIdentifierComparisons
+            test_lookupForOneHundredSameTypeSiblings_usesAtMostTwoHundredIdentifierComparisons
+            test_keyIndex_preservesCountersOrderingAndLookupSemantics
+            test_keyIndex_handlesHashCollisionsOrderedAuxiliaryKeysAndDuplicateFullKeys
+            test_keyIndex_isRebuiltAfterReusingPreviousNode
+            test_componentIdentifierIndex_preservesIdentityStateAndOrderAcrossReorderInsertionAndRemoval
+          )
+
+          echo '=== Candidate: complete CKTreeNodeTests must pass ==='
+          xcodebuild "${common_args[@]}" \
+            -resultBundlePath "$RUNNER_TEMP/candidate.xcresult" \
+            -only-testing:"$test_class" \
+            | tee "$RUNNER_TEMP/candidate.log"
+          for method in "${methods[@]}"; do
+            grep -F "$method" "$RUNNER_TEMP/candidate.log" | grep -F 'passed'
+          done
+
+          echo '=== Substitute parent implementation while retaining regression tests ==='
+          git checkout "$parent" -- \
+            ComponentKit/Core/ComponentTree/CKTreeNode.h \
+            ComponentKit/Core/ComponentTree/CKTreeNode.mm
+          git diff --exit-code "$parent" -- \
+            ComponentKit/Core/ComponentTree/CKTreeNode.h \
+            ComponentKit/Core/ComponentTree/CKTreeNode.mm
+
+          set +e
+          xcodebuild "${common_args[@]}" \
+            -resultBundlePath "$RUNNER_TEMP/parent.xcresult" \
+            -only-testing:"$test_class" \
+            >"$RUNNER_TEMP/parent.log" 2>&1
+          parent_status=$?
+          set -e
+          cat "$RUNNER_TEMP/parent.log"
+          if [[ $parent_status -eq 0 ]]; then
+            echo 'Parent implementation unexpectedly passed all regressions' >&2
+            exit 1
+          fi
+          grep -F 'test_createKeyForOneHundredSameTypeSiblings_usesAtMostTwoHundredIdentifierComparisons' "$RUNNER_TEMP/parent.log" | grep -F 'failed'
+          grep -F 'Expected at most 200 identifier comparisons, got 4950' "$RUNNER_TEMP/parent.log"
+          grep -F 'test_lookupForOneHundredSameTypeSiblings_usesAtMostTwoHundredIdentifierComparisons' "$RUNNER_TEMP/parent.log" | grep -F 'failed'
+          grep -F 'Expected at most 200 identifier comparisons, got 5050' "$RUNNER_TEMP/parent.log"
+          for method in \
+            test_keyIndex_preservesCountersOrderingAndLookupSemantics \
+            test_keyIndex_handlesHashCollisionsOrderedAuxiliaryKeysAndDuplicateFullKeys \
+            test_keyIndex_isRebuiltAfterReusingPreviousNode \
+            test_componentIdentifierIndex_preservesIdentityStateAndOrderAcrossReorderInsertionAndRemoval; do
+            grep -F "$method" "$RUNNER_TEMP/parent.log" | grep -F 'passed'
+          done
