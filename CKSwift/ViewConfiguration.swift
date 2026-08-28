@@ -17,6 +17,60 @@ private extension KeyPath where Root: NSObject {
   }
 }
 
+private protocol OptionalAttributeValue {
+  var isNil: Bool { get }
+}
+
+extension Optional: OptionalAttributeValue {
+  fileprivate var isNil: Bool {
+    switch self {
+    case .none:
+      return true
+    case .some:
+      return false
+    }
+  }
+}
+
+/// Gives RenderCore an Objective-C object with Swift value equality semantics.
+/// Values that do not conform to `Hashable` intentionally compare unequal so
+/// their applicators are rerun conservatively.
+private final class ReconciledAttributeValue: NSObject {
+  private let value: Any
+
+  init<Value>(_ value: Value) {
+    self.value = value
+  }
+
+  override func isEqual(_ object: Any?) -> Bool {
+    guard let other = object as? ReconciledAttributeValue else {
+      return false
+    }
+    if isNil || other.isNil {
+      return isNil && other.isNil
+    }
+    guard let value = value as? AnyHashable,
+          let otherValue = other.value as? AnyHashable else {
+      return false
+    }
+    return value == otherValue
+  }
+
+  override var hash: Int {
+    if isNil {
+      return 0
+    }
+    if let value = value as? AnyHashable {
+      return value.hashValue
+    }
+    return ObjectIdentifier(self).hashValue
+  }
+
+  private var isNil: Bool {
+    return (value as? OptionalAttributeValue)?.isNil ?? false
+  }
+}
+
 /// Represents the class of a view and the attributes that should be applied to it.
 public struct ViewConfiguration {
   /// Represents a view configuration attribute.
@@ -29,7 +83,7 @@ public struct ViewConfiguration {
     ///   - keyPath: The keypath where the value should be stored.
     ///   - value: The value to store.
     public init<Value>(_ keyPath: ReferenceWritableKeyPath<View, Value>, _ value: Value) {
-      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: keyPath.asString, value: value) { v in
+      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: keyPath.asString, value: ReconciledAttributeValue(value)) { v in
         let view = v as! View
         view[keyPath: keyPath] = value
       }
@@ -52,7 +106,7 @@ public struct ViewConfiguration {
     ///   - keyPath: The keypath where the value should be stored.
     ///   - value: The value to store.
     public init<Value>(_ keyPath: ReferenceWritableKeyPath<CALayer, Value>, _ value: Value) {
-      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: "layer" + keyPath.asString, value: value) { view in
+      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: "layer" + keyPath.asString, value: ReconciledAttributeValue(value)) { view in
         view.layer[keyPath: keyPath] = value
       }
     }
