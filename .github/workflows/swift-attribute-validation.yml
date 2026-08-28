@@ -75,15 +75,15 @@ jobs:
             ComponentKit.xcodeproj/xcshareddata/xcschemes/ComponentKit.xcscheme
 
           # The repository's Xcode 11-era umbrella relies on transitive module
-          # visibility that modern Clang no longer supplies. Import RenderCore
-          # before CKSwift's generated header imports ComponentKit.
+          # visibility that modern Clang no longer supplies. Declare RenderCore
+          # before ComponentKit's forwarding headers use its declarations.
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('CKSwift/CKSwift.h')
+          path = Path('ComponentKit/ComponentKit.h')
           contents = path.read_text()
           path.write_text(contents.replace(
-              '#import <Foundation/Foundation.h>',
-              '#import <Foundation/Foundation.h>\n@import RenderCore;',
+              '#import <UIKit/UIKit.h>',
+              '#import <UIKit/UIKit.h>\n@import RenderCore;',
           ))
           PY
 
