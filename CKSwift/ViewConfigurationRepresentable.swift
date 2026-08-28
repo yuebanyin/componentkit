@@ -47,9 +47,21 @@ public protocol ViewAttributeAssignable : ViewAttributeRepresentable  {
 
 extension ViewAttributeAssignable where Self: ComponentInflatable {
 
+  public func attributes<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<UIViewType, Value>, _ value: Value) -> Self {
+    var copy = self
+    copy.attributes.append(ViewConfiguration.Attribute(keyPath, value))
+    return copy
+  }
+
   public func attributes<Value>(_ keyPath: ReferenceWritableKeyPath<UIViewType, Value>, _ value: Value) -> Self {
     var copy = self
     copy.attributes.append(ViewConfiguration.Attribute(keyPath, value))
+    return copy
+  }
+
+  public func attribute<Value: Equatable>(_ layerAttribute: ReferenceWritableKeyPath<CALayer, Value>, _ value: Value) -> Self {
+    var copy = self
+    copy.layerAttributes.append(ViewConfiguration.LayerAttribute(layerAttribute, value))
     return copy
   }
 
