@@ -55,7 +55,7 @@ jobs:
 
           candidate=33819424a7c0cc5595ca448197cb640f39d9a0c5
           parent=bccb9a416f62f055c439c3ec5646362afebc1239
-          test_class=CKSwiftTests/ViewConfigurationTests
+          test_class=CKSwiftTests
           implementation_files=(
             CKSwift/ViewConfiguration.swift
             CKSwift/ViewConfigurationRepresentable.swift
