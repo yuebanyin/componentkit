@@ -12,6 +12,12 @@
 
 #import <Foundation/Foundation.h>
 
+#if CK_NOT_SWIFT
+#include <memory>
+
+class CKTreeNodeChildIndex;
+#endif
+
 #import <ComponentKit/CKComponentScopeTypes.h>
 #import <ComponentKit/CKComponentScopeRoot.h>
 #import <ComponentKit/CKComponentScopeHandle.h>
@@ -53,6 +59,7 @@ struct CKComponentScopePair {
   @package
   CKTreeNodeComponentKey _componentKey;
   std::vector<CKTreeNodeComponentKeyToNode> _children;
+  std::unique_ptr<CKTreeNodeChildIndex> _childIndex;
 }
 
 - (instancetype)init NS_UNAVAILABLE;

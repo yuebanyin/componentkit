@@ -20,6 +20,7 @@
 
 #include <tuple>
 #include <atomic>
+#include <unordered_map>
 
 #import "CKThreadLocalComponentScope.h"
 #import "CKRenderHelpers.h"
@@ -53,6 +54,98 @@ namespace TreeNode {
 }
 }
 
+
+namespace {
+
+static auto CKTreeNodeHashCombine(size_t lhs, size_t rhs) -> size_t
+{
+  return RCHash64ToNative(RCHashCombine(lhs, rhs));
+}
+
+struct CKTreeNodeSiblingKey {
+  const char *componentTypeName;
+  id<NSObject> identifier;
+};
+
+struct CKTreeNodeSiblingKeyHasher {
+  auto operator()(const CKTreeNodeSiblingKey &key) const -> size_t
+  {
+    auto const typeHash = std::hash<const char *>{}(key.componentTypeName);
+    return CKTreeNodeHashCombine(typeHash, [key.identifier hash]);
+  }
+};
+
+struct CKTreeNodeSiblingKeyEqual {
+  auto operator()(const CKTreeNodeSiblingKey &lhs, const CKTreeNodeSiblingKey &rhs) const -> bool
+  {
+    return lhs.componentTypeName == rhs.componentTypeName && RCObjectIsEqual(lhs.identifier, rhs.identifier);
+  }
+};
+
+struct CKTreeNodeComponentKeyHasher {
+  auto operator()(const CKTreeNodeComponentKey &key) const -> size_t
+  {
+    auto hash = std::hash<const char *>{}(key.componentTypeName);
+    hash = CKTreeNodeHashCombine(hash, std::hash<NSUInteger>{}(key.counter));
+    hash = CKTreeNodeHashCombine(hash, [key.identifier hash]);
+    hash = CKTreeNodeHashCombine(hash, key.keys.size());
+    for (id<NSObject> auxiliaryKey : key.keys) {
+      hash = CKTreeNodeHashCombine(hash, [auxiliaryKey hash]);
+    }
+    return hash;
+  }
+};
+
+struct CKTreeNodeComponentKeyEqual {
+  auto operator()(const CKTreeNodeComponentKey &lhs, const CKTreeNodeComponentKey &rhs) const -> bool
+  {
+    return lhs == rhs;
+  }
+};
+
+} // namespace
+
+class CKTreeNodeChildIndex final {
+public:
+  explicit CKTreeNodeChildIndex(const std::vector<CKTreeNodeComponentKeyToNode> &children)
+  {
+    _siblingCounts.reserve(children.size());
+    _children.reserve(children.size());
+    for (auto const &child : children) {
+      addChild(child.key, child.node);
+    }
+  }
+
+  auto siblingCount(const char *componentTypeName, id<NSObject> identifier) const -> NSUInteger
+  {
+    auto const it = _siblingCounts.find(CKTreeNodeSiblingKey{componentTypeName, identifier});
+    return it == _siblingCounts.end() ? 0 : it->second;
+  }
+
+  auto childForKey(const CKTreeNodeComponentKey &key) const -> CKTreeNode *
+  {
+    auto const it = _children.find(key);
+    return it == _children.end() ? nil : it->second;
+  }
+
+  auto addChild(const CKTreeNodeComponentKey &key, CKTreeNode *child) -> void
+  {
+    auto const result = _siblingCounts.emplace(CKTreeNodeSiblingKey{key.componentTypeName, key.identifier}, 0);
+    ++result.first->second;
+    // Keep the first child when a full key is inserted more than once, matching the previous linear lookup behavior.
+    _children.emplace(key, child);
+  }
+
+private:
+  std::unordered_map<CKTreeNodeSiblingKey,
+                     NSUInteger,
+                     CKTreeNodeSiblingKeyHasher,
+                     CKTreeNodeSiblingKeyEqual> _siblingCounts;
+  std::unordered_map<CKTreeNodeComponentKey,
+                     CKTreeNode *,
+                     CKTreeNodeComponentKeyHasher,
+                     CKTreeNodeComponentKeyEqual> _children;
+};
 
 @interface CKTreeNode ()
 @property (nonatomic, weak, readwrite) id<CKComponentProtocol> component;
@@ -165,8 +258,9 @@ namespace TreeNode {
 
 - (void)reusePreviousNode:(CKTreeNode *)node inScopeRoot:(CKComponentScopeRoot *)scopeRoot
 {
-  // Transfer the children vector from the reused node.
-   _children = node->_children;
+  // Transfer the children vector from the reused node. The index is rebuilt lazily from the transferred children.
+  _children = node->_children;
+  _childIndex.reset();
 
   for (auto const &child : _children) {
     if (child.key.type() == CKTreeNodeComponentKey::Type::parent) {
@@ -222,12 +316,10 @@ namespace TreeNode {
 
 - (CKTreeNode *)childForComponentKey:(const CKTreeNodeComponentKey &)key
 {
-  for (auto const &child : _children) {
-    if (child.key == key) {
-      return child.node;
-    }
+  if (!_childIndex) {
+    _childIndex = std::make_unique<CKTreeNodeChildIndex>(_children);
   }
-  return nil;
+  return _childIndex->childForKey(key);
 }
 
 - (CKTreeNodeComponentKey)createKeyForComponentTypeName:(const char *)componentTypeName
@@ -235,19 +327,20 @@ namespace TreeNode {
                                                    keys:(const std::vector<id<NSObject>> &)keys
                                                    type:(CKTreeNodeComponentKey::Type)type
 {
-  NSUInteger keyCounter = CKTreeNodeComponentKey::startOffsetForType(type);
-  for (auto const &child : _children) {
-    if (child.key.componentTypeName == componentTypeName && RCObjectIsEqual(child.key.identifier, identifier)) {
-      keyCounter += 2;
-    }
+  if (!_childIndex) {
+    _childIndex = std::make_unique<CKTreeNodeChildIndex>(_children);
   }
-
+  auto const siblingCount = _childIndex->siblingCount(componentTypeName, identifier);
+  auto const keyCounter = CKTreeNodeComponentKey::startOffsetForType(type) + 2 * siblingCount;
   return CKTreeNodeComponentKey{componentTypeName, keyCounter, identifier, keys};
 }
 
 - (void)setChild:(CKTreeNode *)child forComponentKey:(const CKTreeNodeComponentKey &)componentKey
 {
   _children.push_back(CKTreeNodeComponentKeyToNode{.key = componentKey, .node = child});
+  if (_childIndex) {
+    _childIndex->addChild(componentKey, child);
+  }
 }
 
 static CKComponentScopeHandle *_createScopeHandle(CKComponentScopeRoot *scopeRoot,
