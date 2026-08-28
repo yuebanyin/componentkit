@@ -147,7 +147,7 @@ static void *ck_currentAsyncLayerTransactionKey = &ck_currentAsyncLayerTransacti
 
 - (void)ck_setAsyncLayerTransactions:(NSHashTable *)transactions
 {
-  objc_setAssociatedObject(transactions, ck_asyncLayerTransactionsKey, transactions, OBJC_ASSOCIATION_RETAIN);
+  objc_setAssociatedObject(self, ck_asyncLayerTransactionsKey, transactions, OBJC_ASSOCIATION_RETAIN);
 }
 
 - (CKAsyncTransaction *)ck_currentAsyncLayerTransaction

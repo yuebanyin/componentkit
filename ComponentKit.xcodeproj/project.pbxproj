@@ -572,6 +572,7 @@
 		B342DCA11AC23EE800ACAC53 /* CKNetworkImageComponentTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = B342DC991AC23EE800ACAC53 /* CKNetworkImageComponentTests.mm */; };
 		B342DCA21AC23EE800ACAC53 /* CKOverlayLayoutComponentTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = B342DC9A1AC23EE800ACAC53 /* CKOverlayLayoutComponentTests.mm */; };
 		B342DCA31AC23EE800ACAC53 /* CKRatioLayoutComponentTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = B342DC9B1AC23EE800ACAC53 /* CKRatioLayoutComponentTests.mm */; };
+		4CCAEB7A686E42ED9C1CF634 /* CKAsyncTransactionContainerTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7372491C72CE4DAD9AC978F3 /* CKAsyncTransactionContainerTests.mm */; };
 		B342DCBA1AC23F5400ACAC53 /* CKLabelComponentTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = B342DCB51AC23F5400ACAC53 /* CKLabelComponentTests.mm */; };
 		B342DCBB1AC23F5400ACAC53 /* CKTextComponentTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = B342DCB61AC23F5400ACAC53 /* CKTextComponentTests.mm */; };
 		B342DCBC1AC23F5400ACAC53 /* CKTextKitTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = B342DCB71AC23F5400ACAC53 /* CKTextKitTests.mm */; };
@@ -1828,6 +1829,7 @@
 		B342DC9B1AC23EE800ACAC53 /* CKRatioLayoutComponentTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CKRatioLayoutComponentTests.mm; sourceTree = "<group>"; };
 		B342DC9D1AC23EE800ACAC53 /* ComponentKitApplicationTests-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "ComponentKitApplicationTests-Info.plist"; sourceTree = "<group>"; };
 		B342DCAA1AC23F2A00ACAC53 /* ComponentTextKitApplicationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ComponentTextKitApplicationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7372491C72CE4DAD9AC978F3 /* CKAsyncTransactionContainerTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CKAsyncTransactionContainerTests.mm; sourceTree = "<group>"; };
 		B342DCB51AC23F5400ACAC53 /* CKLabelComponentTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CKLabelComponentTests.mm; sourceTree = "<group>"; };
 		B342DCB61AC23F5400ACAC53 /* CKTextComponentTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CKTextComponentTests.mm; sourceTree = "<group>"; };
 		B342DCB71AC23F5400ACAC53 /* CKTextKitTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CKTextKitTests.mm; sourceTree = "<group>"; };
@@ -2821,6 +2823,7 @@
 		B342DCAB1AC23F2A00ACAC53 /* ComponentTextKitApplicationTests */ = {
 			isa = PBXGroup;
 			children = (
+				7372491C72CE4DAD9AC978F3 /* CKAsyncTransactionContainerTests.mm */,
 				B342DCB51AC23F5400ACAC53 /* CKLabelComponentTests.mm */,
 				B342DCB61AC23F5400ACAC53 /* CKTextComponentTests.mm */,
 				B342DCB71AC23F5400ACAC53 /* CKTextKitTests.mm */,
@@ -5160,6 +5163,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4CCAEB7A686E42ED9C1CF634 /* CKAsyncTransactionContainerTests.mm in Sources */,
 				B342DCBD1AC23F5400ACAC53 /* CKTextKitTruncationTests.mm in Sources */,
 				B342DCBB1AC23F5400ACAC53 /* CKTextComponentTests.mm in Sources */,
 				B342DCBA1AC23F5400ACAC53 /* CKLabelComponentTests.mm in Sources */,
