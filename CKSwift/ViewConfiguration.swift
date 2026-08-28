@@ -29,7 +29,7 @@ private final class ReconciledAttributeValue: NSObject {
     valuesAreEqual = { _ in false }
   }
 
-  init<Value: Equatable>(_ value: Value, usingEquality: Bool) {
+  init<Value: Equatable>(equatable value: Value) {
     self.value = value
     valuesAreEqual = { otherValue in
       guard let otherValue = otherValue as? Value else {
@@ -66,7 +66,7 @@ public struct ViewConfiguration {
     ///   - keyPath: The keypath where the value should be stored.
     ///   - value: The value to store.
     public init<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<View, Value>, _ value: Value) {
-      self.init(keyPath, value, reconciliationValue: ReconciledAttributeValue(value, usingEquality: true))
+      self.init(keyPath, value, reconciliationValue: ReconciledAttributeValue(equatable: value))
     }
 
     /// Creates an attribute for a value without meaningful equality semantics.
@@ -103,7 +103,7 @@ public struct ViewConfiguration {
     ///   - keyPath: The keypath where the value should be stored.
     ///   - value: The value to store.
     public init<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<CALayer, Value>, _ value: Value) {
-      self.init(keyPath, value, reconciliationValue: ReconciledAttributeValue(value, usingEquality: true))
+      self.init(keyPath, value, reconciliationValue: ReconciledAttributeValue(equatable: value))
     }
 
     /// Creates a layer attribute for a value without meaningful equality semantics.
@@ -190,8 +190,16 @@ public struct ViewConfigurationAttributeBuilder<View: UIView> {
     .layerAttribute(attr)
   }
 
+  public static func buildExpression<Value: Equatable>(_ attr: (key: ReferenceWritableKeyPath<View, Value>, value: Value)) -> Directive {
+    .attribute(ViewConfiguration.Attribute<View>(attr.key, attr.value))
+  }
+
   public static func buildExpression<Value>(_ attr: (key: ReferenceWritableKeyPath<View, Value>, value: Value)) -> Directive {
     .attribute(ViewConfiguration.Attribute<View>(attr.key, attr.value))
+  }
+
+  public static func buildExpression<Value: Equatable>(_ attr: (key: ReferenceWritableKeyPath<CALayer, Value>, value: Value)) -> Directive {
+    .layerAttribute(ViewConfiguration.LayerAttribute(attr.key, attr.value))
   }
 
   public static func buildExpression<Value>(_ attr: (key: ReferenceWritableKeyPath<CALayer, Value>, value: Value)) -> Directive {

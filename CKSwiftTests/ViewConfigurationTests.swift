@@ -36,6 +36,18 @@ private final class AttributeTestView: UIView {
     AttributeTestLayer.self
   }
 
+  override var backgroundColor: UIColor? {
+    didSet {
+      backgroundColorSetCount += 1
+    }
+  }
+
+  override var alpha: CGFloat {
+    didSet {
+      alphaSetCount += 1
+    }
+  }
+
   @objc dynamic var objectValue: NSString? {
     didSet {
       objectValueSetCount += 1
@@ -60,6 +72,8 @@ private final class AttributeTestView: UIView {
     }
   }
 
+  private(set) var backgroundColorSetCount = 0
+  private(set) var alphaSetCount = 0
   private(set) var objectValueSetCount = 0
   private(set) var scalarValueSetCount = 0
   private(set) var enumValueSetCount = 0
@@ -289,6 +303,33 @@ final class ViewConfigurationTests: XCTestCase {
     XCTAssertEqual(fluentView.backgroundColor, .green)
     XCTAssertEqual(fluentView.alpha, 0.8, accuracy: 0.000_001)
     XCTAssertEqual(fluentView.layer.cornerRadius, 11)
+    let backgroundColorSetCount = fluentView.backgroundColorSetCount
+    let alphaSetCount = fluentView.alphaSetCount
+    let cornerRadiusSetCount = fluentView.testLayer.cornerRadiusSetCount
+
+    let equalBuilderView = harness.mount {
+      Component(view: ViewConfiguration(viewClass: AttributeTestView.self) {
+        (\AttributeTestView.backgroundColor, UIColor.green as UIColor?)
+        (\AttributeTestView.alpha, CGFloat(0.8))
+        (\CALayer.cornerRadius, CGFloat(11))
+      })
+    }
+    XCTAssertTrue(builderView === equalBuilderView)
+    XCTAssertEqual(equalBuilderView.backgroundColorSetCount, backgroundColorSetCount)
+    XCTAssertEqual(equalBuilderView.alphaSetCount, alphaSetCount)
+    XCTAssertEqual(equalBuilderView.testLayer.cornerRadiusSetCount, cornerRadiusSetCount)
+
+    let equalFluentView = harness.mount {
+      ComponentView<AttributeTestView>()
+        .backgroundColor(.green)
+        .alpha(0.8)
+        .cornerRadius(11)
+        .inflateComponent(with: nil)
+    }
+    XCTAssertTrue(builderView === equalFluentView)
+    XCTAssertEqual(equalFluentView.backgroundColorSetCount, backgroundColorSetCount)
+    XCTAssertEqual(equalFluentView.alphaSetCount, alphaSetCount)
+    XCTAssertEqual(equalFluentView.testLayer.cornerRadiusSetCount, cornerRadiusSetCount)
   }
 
   func testFluentOptionalModifierReconcilesNonNilAndNil() {
