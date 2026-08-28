@@ -17,57 +17,40 @@ private extension KeyPath where Root: NSObject {
   }
 }
 
-private protocol OptionalAttributeValue {
-  var isNil: Bool { get }
-}
-
-extension Optional: OptionalAttributeValue {
-  fileprivate var isNil: Bool {
-    switch self {
-    case .none:
-      return true
-    case .some:
-      return false
-    }
-  }
-}
-
 /// Gives RenderCore an Objective-C object with Swift value equality semantics.
-/// Values that do not conform to `Hashable` intentionally compare unequal so
+/// Values that do not conform to `Equatable` intentionally compare unequal so
 /// their applicators are rerun conservatively.
 private final class ReconciledAttributeValue: NSObject {
   private let value: Any
+  private let valuesAreEqual: (Any) -> Bool
 
   init<Value>(_ value: Value) {
     self.value = value
+    valuesAreEqual = { _ in false }
+  }
+
+  init<Value: Equatable>(_ value: Value, usingEquality: Bool) {
+    self.value = value
+    valuesAreEqual = { otherValue in
+      guard let otherValue = otherValue as? Value else {
+        return false
+      }
+      return value == otherValue
+    }
   }
 
   override func isEqual(_ object: Any?) -> Bool {
     guard let other = object as? ReconciledAttributeValue else {
       return false
     }
-    if isNil || other.isNil {
-      return isNil && other.isNil
-    }
-    guard let value = value as? AnyHashable,
-          let otherValue = other.value as? AnyHashable else {
-      return false
-    }
-    return value == otherValue
+    return valuesAreEqual(other.value)
   }
 
+  // RenderCore previously used the same @YES value for every Swift attribute,
+  // so retaining a constant hash preserves that behavior while isEqual(_:) now
+  // distinguishes values.
   override var hash: Int {
-    if isNil {
-      return 0
-    }
-    if let value = value as? AnyHashable {
-      return value.hashValue
-    }
-    return ObjectIdentifier(self).hashValue
-  }
-
-  private var isNil: Bool {
-    return (value as? OptionalAttributeValue)?.isNil ?? false
+    return 0
   }
 }
 
@@ -82,8 +65,22 @@ public struct ViewConfiguration {
     /// - Parameters:
     ///   - keyPath: The keypath where the value should be stored.
     ///   - value: The value to store.
+    public init<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<View, Value>, _ value: Value) {
+      self.init(keyPath, value, reconciliationValue: ReconciledAttributeValue(value, usingEquality: true))
+    }
+
+    /// Creates an attribute for a value without meaningful equality semantics.
+    /// Such values are conservatively reapplied during reconciliation.
     public init<Value>(_ keyPath: ReferenceWritableKeyPath<View, Value>, _ value: Value) {
-      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: keyPath.asString, value: ReconciledAttributeValue(value)) { v in
+      self.init(keyPath, value, reconciliationValue: ReconciledAttributeValue(value))
+    }
+
+    private init<Value>(
+      _ keyPath: ReferenceWritableKeyPath<View, Value>,
+      _ value: Value,
+      reconciliationValue: ReconciledAttributeValue
+    ) {
+      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: keyPath.asString, value: reconciliationValue) { v in
         let view = v as! View
         view[keyPath: keyPath] = value
       }
@@ -105,8 +102,22 @@ public struct ViewConfiguration {
     /// - Parameters:
     ///   - keyPath: The keypath where the value should be stored.
     ///   - value: The value to store.
+    public init<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<CALayer, Value>, _ value: Value) {
+      self.init(keyPath, value, reconciliationValue: ReconciledAttributeValue(value, usingEquality: true))
+    }
+
+    /// Creates a layer attribute for a value without meaningful equality semantics.
+    /// Such values are conservatively reapplied during reconciliation.
     public init<Value>(_ keyPath: ReferenceWritableKeyPath<CALayer, Value>, _ value: Value) {
-      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: "layer" + keyPath.asString, value: ReconciledAttributeValue(value)) { view in
+      self.init(keyPath, value, reconciliationValue: ReconciledAttributeValue(value))
+    }
+
+    private init<Value>(
+      _ keyPath: ReferenceWritableKeyPath<CALayer, Value>,
+      _ value: Value,
+      reconciliationValue: ReconciledAttributeValue
+    ) {
+      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: "layer" + keyPath.asString, value: reconciliationValue) { view in
         view.layer[keyPath: keyPath] = value
       }
     }
