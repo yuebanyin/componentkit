@@ -1046,6 +1046,7 @@
 		D4BC576D23E3765C0075D688 /* CKInternalHelpers.h in Headers */ = {isa = PBXBuildFile; fileRef = D4BC571323E3765B0075D688 /* CKInternalHelpers.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D4BC578923E37A1B0075D688 /* CKSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D4BC578023E37A1B0075D688 /* CKSwift.framework */; };
 		D4BC579023E37A1B0075D688 /* CKSwiftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BC578F23E37A1B0075D688 /* CKSwiftTests.swift */; };
+		A78C1A022B00000100000001 /* ViewConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A78C1A012B00000100000001 /* ViewConfigurationTests.swift */; };
 		D4BC579523E37A1B0075D688 /* CKSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D4BC578023E37A1B0075D688 /* CKSwift.framework */; };
 		D4BC579623E37A1B0075D688 /* CKSwift.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D4BC578023E37A1B0075D688 /* CKSwift.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		D4BC579E23E37A240075D688 /* CKSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BC579D23E37A240075D688 /* CKSwift.swift */; };
@@ -2115,6 +2116,7 @@
 		D4BC578323E37A1B0075D688 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D4BC578823E37A1B0075D688 /* CKSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CKSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4BC578F23E37A1B0075D688 /* CKSwiftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CKSwiftTests.swift; sourceTree = "<group>"; };
+		A78C1A012B00000100000001 /* ViewConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewConfigurationTests.swift; sourceTree = "<group>"; };
 		D4BC579123E37A1B0075D688 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D4BC579D23E37A240075D688 /* CKSwift.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CKSwift.swift; sourceTree = "<group>"; };
 		D4BC57C423E387510075D688 /* CKSwift.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = CKSwift.xcconfig; sourceTree = "<group>"; };
@@ -3516,6 +3518,7 @@
 			children = (
 				D4BC578F23E37A1B0075D688 /* CKSwiftTests.swift */,
 				D4B20D6C25506A1300763BB1 /* FlexboxComponentTests.swift */,
+				A78C1A012B00000100000001 /* ViewConfigurationTests.swift */,
 				D4BC579123E37A1B0075D688 /* Info.plist */,
 			);
 			path = CKSwiftTests;
@@ -5446,6 +5449,7 @@
 			files = (
 				D4B20D6D25506A1300763BB1 /* FlexboxComponentTests.swift in Sources */,
 				D4BC579023E37A1B0075D688 /* CKSwiftTests.swift in Sources */,
+				A78C1A022B00000100000001 /* ViewConfigurationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

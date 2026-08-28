@@ -29,7 +29,7 @@ public struct ViewConfiguration {
     ///   - keyPath: The keypath where the value should be stored.
     ///   - value: The value to store.
     public init<Value>(_ keyPath: ReferenceWritableKeyPath<View, Value>, _ value: Value) {
-      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: keyPath.asString) { v in
+      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: keyPath.asString, value: value) { v in
         let view = v as! View
         view[keyPath: keyPath] = value
       }
@@ -52,7 +52,7 @@ public struct ViewConfiguration {
     ///   - keyPath: The keypath where the value should be stored.
     ///   - value: The value to store.
     public init<Value>(_ keyPath: ReferenceWritableKeyPath<CALayer, Value>, _ value: Value) {
-      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: "layer" + keyPath.asString) { view in
+      componentViewAttribute = ComponentViewAttributeSwiftBridge(identifier: "layer" + keyPath.asString, value: value) { view in
         view.layer[keyPath: keyPath] = value
       }
     }

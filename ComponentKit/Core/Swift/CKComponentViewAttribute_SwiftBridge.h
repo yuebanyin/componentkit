@@ -27,6 +27,14 @@ NS_SWIFT_NAME(ComponentViewAttributeSwiftBridge)
 
 - (instancetype)initWithIdentifier:(NSString *)identifier applicator:(void(^)(UIView *))applicator;
 
+/**
+ Creates an attribute whose value participates in ComponentKit's attribute reconciliation.
+ The value is used only for equality; the applicator remains responsible for updating the view.
+ */
+- (instancetype)initWithIdentifier:(NSString *)identifier
+                              value:(nullable id)value
+                         applicator:(void(^)(UIView *))applicator;
+
 - (instancetype)init NS_UNAVAILABLE;
 
 - (instancetype)initWithGesture:(CKComponentViewAttributeGesture_SwiftBridge)gesture swiftAction:(CKActionWithId_SwiftBridge)swiftAction;
