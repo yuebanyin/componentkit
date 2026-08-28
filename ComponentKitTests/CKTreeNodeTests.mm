@@ -302,7 +302,7 @@ static CKComponent* buildComponent(CKComponent*(^block)()) {
   auto const root = [CKTreeNode rootNode];
   char componentTypeName[] = "CKTreeNodeTest_KeyedComponent";
   char equalButDifferentTypeName[] = "CKTreeNodeTest_KeyedComponent";
-  XCTAssertNotEqual(componentTypeName, equalButDifferentTypeName);
+  XCTAssertNotEqual(&componentTypeName[0], &equalButDifferentTypeName[0]);
 
   auto const nilParentNode = [CKTreeNode rootNode];
   auto const nilParentKey = [root createKeyForComponentTypeName:componentTypeName
@@ -690,8 +690,8 @@ static CKComponent* buildComponent(CKComponent*(^block)()) {
   XCTAssertNotEqual(firstComponentSecondGeneration.treeNode.scopeHandle.state, equalFirstIdentifier);
   XCTAssertNotEqual(thirdComponentSecondGeneration.treeNode.scopeHandle.state, equalThirdIdentifier);
 
-  auto const previousParent = firstResults.scopeRoot.rootNode.parentForNodeIdentifier(firstComponent.treeNode.nodeIdentifier);
-  auto const parent = secondResults.scopeRoot.rootNode.parentForNodeIdentifier(firstComponentSecondGeneration.treeNode.nodeIdentifier);
+  auto const previousParent = [firstResults.scopeRoot rootNode].parentForNodeIdentifier(firstComponent.treeNode.nodeIdentifier);
+  auto const parent = [secondResults.scopeRoot rootNode].parentForNodeIdentifier(firstComponentSecondGeneration.treeNode.nodeIdentifier);
   XCTAssertEqual(previousParent.children.size(), (size_t)3);
   XCTAssertEqual(previousParent.children[0], firstComponent.treeNode);
   XCTAssertEqual(previousParent.children[1], removedComponent.treeNode);
