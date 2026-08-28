@@ -188,6 +188,12 @@ void ViewReusePoolMap::reset(UIView *container, CK::Component::MountAnalyticsCon
     it.second.reset(mountAnalyticsContext);
   }
 
+  // Relative ordering is only meaningful when multiple views were vended.
+  if (vendedViews.size() < 2) {
+    vendedViews.clear();
+    return;
+  }
+
   // Now we need to ensure that the ordering of container.subviews matches vendedViews.
   NSMutableArray *subviews = [[container subviews] mutableCopy];
   std::vector<UIView *>::const_iterator nextVendedViewIt = vendedViews.cbegin();

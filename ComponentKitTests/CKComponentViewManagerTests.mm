@@ -29,6 +29,11 @@ using CK::Component::ViewManager;
 @property (nonatomic, assign) NSUInteger numberOfSubviewsAdded;
 @end
 
+@interface CKSubviewCountingView : UIView
+@property (nonatomic, assign) BOOL countsSubviewEnumerations;
+@property (nonatomic, assign) NSUInteger numberOfSubviewEnumerations;
+@end
+
 /** View provides `didEnterReusePool` callback */
 @interface CKTestReusableView : UIView
 @property (nonatomic, readonly, assign) BOOL isDidEnterReusePoolCalled;
@@ -36,6 +41,75 @@ using CK::Component::ViewManager;
 @end
 
 @implementation CKComponentViewManagerTests
+
+- (void)testThatCleanupWithNoVendedViewsDoesNotEnumerateSubviews
+{
+  CKSubviewCountingView *container = [[CKSubviewCountingView alloc] init];
+  CK::Component::ViewReuseUtilities::mountingInRootView(container);
+
+  for (NSUInteger i = 0; i < 100; i++) {
+    {
+      ViewManager m(container);
+      container.countsSubviewEnumerations = YES;
+    }
+    container.countsSubviewEnumerations = NO;
+  }
+
+  XCTAssertEqual(container.numberOfSubviewEnumerations, 0u);
+}
+
+- (void)testThatCleanupWithOneVendedViewDoesNotEnumerateSubviews
+{
+  CKComponent *component = CK::ComponentBuilder()
+                               .viewClass([UIView class])
+                               .build();
+  CKSubviewCountingView *container = [[CKSubviewCountingView alloc] init];
+  CK::Component::ViewReuseUtilities::mountingInRootView(container);
+
+  for (NSUInteger i = 0; i < 100; i++) {
+    {
+      ViewManager m(container);
+      m.viewForConfiguration([component class], [component viewConfiguration]);
+      container.countsSubviewEnumerations = YES;
+    }
+    container.countsSubviewEnumerations = NO;
+  }
+
+  XCTAssertEqual(container.numberOfSubviewEnumerations, 0u);
+}
+
+- (void)testThatCleanupWithOneVendedViewHidesUnusedViewsInReusePool
+{
+  CKComponent *component = CK::ComponentBuilder()
+                               .viewClass({[CKTestReusableView class], @selector(didEnterReusePool), nil})
+                               .build();
+  UIView *container = [[UIView alloc] init];
+  CK::Component::ViewReuseUtilities::mountingInRootView(container);
+
+  CKTestReusableView *firstView;
+  CKTestReusableView *secondView;
+  CKTestReusableView *thirdView;
+  {
+    ViewManager m(container);
+    firstView = (CKTestReusableView *)m.viewForConfiguration([component class], [component viewConfiguration]);
+    secondView = (CKTestReusableView *)m.viewForConfiguration([component class], [component viewConfiguration]);
+    thirdView = (CKTestReusableView *)m.viewForConfiguration([component class], [component viewConfiguration]);
+  }
+
+  UIView *vendedView;
+  {
+    ViewManager m(container);
+    vendedView = m.viewForConfiguration([component class], [component viewConfiguration]);
+  }
+
+  XCTAssertTrue(vendedView == firstView, @"Expected the first pooled view to be reused");
+  XCTAssertFalse(firstView.hidden, @"Expected the vended view to remain visible");
+  XCTAssertTrue(secondView.hidden, @"Expected the unused pooled view to be hidden");
+  XCTAssertTrue(thirdView.hidden, @"Expected the unused pooled view to be hidden");
+  XCTAssertFalse(firstView.isDidEnterReusePoolCalled, @"Did not expect a reuse callback for the vended view");
+  XCTAssertTrue(secondView.isDidEnterReusePoolCalled, @"Expected a reuse callback for the unused pooled view");
+  XCTAssertTrue(thirdView.isDidEnterReusePoolCalled, @"Expected a reuse callback for the unused pooled view");
+}
 
 - (void)testThatComponentViewManagerVendsRecycledView
 {
@@ -251,6 +325,18 @@ static BOOL isDidEnterReusePoolIsCalledOnDescendant(UIView *view)
     }
   }
   return YES;
+}
+
+@end
+
+@implementation CKSubviewCountingView
+
+- (NSArray<__kindof UIView *> *)subviews
+{
+  if (_countsSubviewEnumerations) {
+    _numberOfSubviewEnumerations++;
+  }
+  return [super subviews];
 }
 
 @end
