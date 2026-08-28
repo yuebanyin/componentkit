@@ -1,0 +1,134 @@
+name: Async transaction container validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ci/async-transaction-validation-b0391cc3
+
+permissions:
+  contents: read
+
+jobs:
+  focused-tests:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - name: Check out validation revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Select Xcode and report simulator toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -d /Applications/Xcode_14.3.1.app ]]; then
+            sudo xcode-select --switch /Applications/Xcode_14.3.1.app/Contents/Developer
+          elif [[ -d /Applications/Xcode_14.3.app ]]; then
+            sudo xcode-select --switch /Applications/Xcode_14.3.app/Contents/Developer
+          fi
+          xcodebuild -version
+          xcrun simctl list devices available
+
+      - name: Build OCMock simulator framework
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p Carthage/Build/iOS
+          xcodebuild build \
+            -project Carthage/Checkouts/ocmock/Source/OCMock.xcodeproj \
+            -target 'OCMock iOS' \
+            -configuration Release \
+            -sdk iphonesimulator \
+            IPHONEOS_DEPLOYMENT_TARGET=12.0 \
+            CODE_SIGNING_ALLOWED=NO \
+            CONFIGURATION_BUILD_DIR="$PWD/Carthage/Build/iOS"
+          test -d Carthage/Build/iOS/OCMock.framework
+          file Carthage/Build/iOS/OCMock.framework/OCMock
+
+      - name: Prove candidate green and parent implementation red
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          candidate=b0391cc34d2f6dfee4ed55a55bb358d77b92a417
+          parent=755b9bad8554af3dfbccc9b8644be787bde7b694
+          test_class=ComponentTextKitApplicationTests/CKAsyncTransactionContainerTests
+          changed_files=(
+            ComponentKit.xcodeproj/project.pbxproj
+            ComponentTextKit/Utility/CKAsyncTransactionContainer.mm
+            ComponentTextKitApplicationTests/CKAsyncTransactionContainerTests.mm
+          )
+          git diff --exit-code "$candidate" -- "${changed_files[@]}"
+          test "$(git diff --name-only "$parent" "$candidate" | sort | tr '\n' ' ')" = \
+            "$(printf '%s\n' "${changed_files[@]}" | sort | tr '\n' ' ')"
+
+          device_id="$({ xcrun simctl list devices available --json || true; } | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          for runtime, devices in data["devices"].items():
+              if "iOS" not in runtime:
+                  continue
+              for device in devices:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      raise SystemExit
+          raise SystemExit("No available iPhone simulator")
+          ')"
+          xcrun simctl boot "$device_id" 2>/dev/null || true
+          xcrun simctl bootstatus "$device_id" -b
+
+          common_args=(
+            test
+            -project ComponentKit.xcodeproj
+            -scheme ComponentKit
+            -sdk iphonesimulator
+            -destination "platform=iOS Simulator,id=$device_id"
+            -configuration Debug
+            CODE_SIGNING_ALLOWED=NO
+            COMPILER_INDEX_STORE_ENABLE=NO
+            GCC_TREAT_WARNINGS_AS_ERRORS=NO
+            IPHONEOS_DEPLOYMENT_TARGET=12.0
+            'OTHER_CPLUSPLUSFLAGS=$(inherited) -include utility'
+          )
+
+          echo '=== Candidate: complete CKAsyncTransactionContainerTests must pass ==='
+          xcodebuild "${common_args[@]}" \
+            -resultBundlePath "$RUNNER_TEMP/candidate.xcresult" \
+            -only-testing:"$test_class" \
+            | tee "$RUNNER_TEMP/candidate.log"
+
+          methods=(
+            testStateRemainsPendingUntilAllOverlappingTransactionsComplete
+            testCancelCancelsCurrentAndCommittedTransactionsAndCallbacksReportCancellation
+            testTrackingAndCancellationAreIsolatedBetweenLayers
+            testMainTransactionGroupCoalescesTransactionsUntilCommit
+            testUIViewForwardsContainerStateAndCancellationToItsLayer
+          )
+          for method in "${methods[@]}"; do
+            grep -F "$method" "$RUNNER_TEMP/candidate.log" | grep -F 'passed'
+          done
+
+          echo '=== Substitute exact parent implementation while retaining regression tests ==='
+          git checkout "$parent" -- ComponentTextKit/Utility/CKAsyncTransactionContainer.mm
+          git diff --exit-code "$parent" -- ComponentTextKit/Utility/CKAsyncTransactionContainer.mm
+          grep -F 'objc_setAssociatedObject(transactions, ck_asyncLayerTransactionsKey, transactions' \
+            ComponentTextKit/Utility/CKAsyncTransactionContainer.mm
+
+          set +e
+          xcodebuild "${common_args[@]}" \
+            -resultBundlePath "$RUNNER_TEMP/parent.xcresult" \
+            -only-testing:"$test_class" \
+            >"$RUNNER_TEMP/parent.log" 2>&1
+          parent_status=$?
+          set -e
+          cat "$RUNNER_TEMP/parent.log"
+          if [[ $parent_status -eq 0 ]]; then
+            echo 'Parent implementation unexpectedly passed all regressions' >&2
+            exit 1
+          fi
+          for method in "${methods[@]}"; do
+            grep -F "$method" "$RUNNER_TEMP/parent.log" | grep -F 'failed'
+          done
