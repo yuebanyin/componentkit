@@ -74,6 +74,19 @@ jobs:
           grep -F 'BlueprintName = "CKSwiftTests"' \
             ComponentKit.xcodeproj/xcshareddata/xcschemes/ComponentKit.xcscheme
 
+          # The repository's Xcode 11-era umbrella relies on transitive module
+          # visibility that modern Clang no longer supplies. Import RenderCore
+          # before CKSwift's generated header imports ComponentKit.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('CKSwift/CKSwift.h')
+          contents = path.read_text()
+          path.write_text(contents.replace(
+              '#import <Foundation/Foundation.h>',
+              '#import <Foundation/Foundation.h>\n@import RenderCore;',
+          ))
+          PY
+
           device_id="$({ xcrun simctl list devices available --json || true; } | python3 -c '
           import json, sys
           data = json.load(sys.stdin)
@@ -102,7 +115,6 @@ jobs:
             SWIFT_TREAT_WARNINGS_AS_ERRORS=NO
             IPHONEOS_DEPLOYMENT_TARGET=12.0
             'OTHER_CPLUSPLUSFLAGS=$(inherited) -include utility'
-            'OTHER_SWIFT_FLAGS=$(inherited) -Xcc -Xclang -Xcc -fno-modules-local-submodule-visibility'
           )
           methods=(
             testChangedValuesAreAppliedToReusedViewAndLayer
