@@ -119,8 +119,8 @@ private struct GestureCompatibleView: CKSwift.View, ViewConfigurationRepresentab
     ViewConfiguration(viewClass: AttributeTestView.self) {
       (\AttributeTestView.backgroundColor, color)
       onTap { (_: GestureCompatibleView, recognizer: UIGestureRecognizer) in
-        recorder.invocationCount += 1
-        recorder.lastRecognizer = recognizer
+        self.recorder.invocationCount += 1
+        self.recorder.lastRecognizer = recognizer
       }
     }
   }
@@ -418,6 +418,6 @@ final class ViewConfigurationTests: XCTestCase {
       XCTFail("Expected to find ComponentKit's gesture action forwarder")
       return
     }
-    forwarder.perform(handleGestureSelector, with: recognizer)
+    _ = forwarder.perform(handleGestureSelector, with: recognizer)
   }
 }
