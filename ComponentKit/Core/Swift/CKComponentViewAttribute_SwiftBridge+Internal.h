@@ -18,9 +18,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface CKComponentViewAttribute_SwiftBridge ()
 
-- (instancetype)initWithViewAttribute:(const CKComponentViewAttribute &)viewAttribute NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithViewAttribute:(const CKComponentViewAttribute &)viewAttribute;
+
+- (instancetype)initWithViewAttribute:(const CKComponentViewAttribute &)viewAttribute
+                                 value:(nullable id)value NS_DESIGNATED_INITIALIZER;
 
 - (const CKComponentViewAttribute &)viewAttribute;
+
+- (nullable id)value;
 
 @end
 

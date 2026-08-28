@@ -78,6 +78,16 @@
                ReferencedContainer = "container:ComponentKit.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D4BC578723E37A1B0075D688"
+               BuildableName = "CKSwiftTests.xctest"
+               BlueprintName = "CKSwiftTests"
+               ReferencedContainer = "container:ComponentKit.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

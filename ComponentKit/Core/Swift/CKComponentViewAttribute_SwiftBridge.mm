@@ -18,24 +18,42 @@
 
 @implementation CKComponentViewAttribute_SwiftBridge {
   CK::DelayedInitialisationWrapper<CKComponentViewAttribute> _viewAttribute;
+  id _value;
 }
 
 - (instancetype)initWithViewAttribute:(const CKComponentViewAttribute &)viewAttribute
 {
+  return [self initWithViewAttribute:viewAttribute value:@YES];
+}
+
+- (instancetype)initWithViewAttribute:(const CKComponentViewAttribute &)viewAttribute value:(id)value
+{
   if (self = [super init]) {
     _viewAttribute = viewAttribute;
+    _value = value;
   }
   return self;
 }
 
 - (instancetype)initWithIdentifier:(NSString *)identifier applicator:(void(^)(UIView *))applicator
 {
-  return [self initWithViewAttribute:{identifier.UTF8String, ^(id view, id){ applicator(view); }}];
+  return [self initWithIdentifier:identifier value:@YES applicator:applicator];
+}
+
+- (instancetype)initWithIdentifier:(NSString *)identifier value:(id)value applicator:(void(^)(UIView *))applicator
+{
+  return [self initWithViewAttribute:{identifier.UTF8String, ^(id view, id){ applicator(view); }}
+                                value:value];
 }
 
 - (const CKComponentViewAttribute &)viewAttribute
 {
   return _viewAttribute;
+}
+
+- (id)value
+{
+  return _value;
 }
 
 - (BOOL)isEqual:(id)other
@@ -79,7 +97,8 @@ static CKComponentViewAttributeValueGestureProvider providerFromGesture(CKCompon
 - (instancetype)initWithGesture:(CKComponentViewAttributeGesture_SwiftBridge)gesture swiftAction:(CKActionWithId_SwiftBridge)swiftAction
 {
   const auto provider = providerFromGesture(gesture);
-  return [self initWithViewAttribute:provider(CKSwiftActionUnsafeBridgeToObjectiveC<UIGestureRecognizer *>(swiftAction)).first];
+  const auto attributeValue = provider(CKSwiftActionUnsafeBridgeToObjectiveC<UIGestureRecognizer *>(swiftAction));
+  return [self initWithViewAttribute:attributeValue.first value:attributeValue.second];
 }
 
 @end
@@ -91,7 +110,7 @@ auto CKComponentViewAttribute_SwiftBridgeToMap(NSArray<CKComponentViewAttribute_
   for (CKComponentViewAttribute_SwiftBridge *swiftAttribute in swiftAttributes) {
     attrMap.insert({
       swiftAttribute.viewAttribute,
-      @YES // Bogus value, not actually used
+      swiftAttribute.value
     });
   }
   return attrMap;
