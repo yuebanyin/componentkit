@@ -236,7 +236,7 @@ final class ViewConfigurationTests: XCTestCase {
     let firstSetCount = firstView.objectValueSetCount
     let firstBorderColorSetCount = firstView.testLayer.borderColorSetCount
     XCTAssertEqual(firstView.objectValue, firstObject)
-    XCTAssertTrue(CGColorEqualToColor(firstView.layer.borderColor!, red))
+    XCTAssertEqual(firstView.layer.borderColor, red)
 
     let nilView = harness.mount {
       Component(view: self.optionalConfiguration(objectValue: nil, borderColor: nil))
@@ -261,7 +261,7 @@ final class ViewConfigurationTests: XCTestCase {
     }
     XCTAssertTrue(firstView === finalView)
     XCTAssertEqual(finalView.objectValue, secondObject)
-    XCTAssertTrue(CGColorEqualToColor(finalView.layer.borderColor!, blue))
+    XCTAssertEqual(finalView.layer.borderColor, blue)
     XCTAssertEqual(finalView.objectValueSetCount, firstSetCount + 2)
     XCTAssertEqual(finalView.testLayer.borderColorSetCount, firstBorderColorSetCount + 2)
   }
