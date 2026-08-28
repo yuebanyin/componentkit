@@ -53,11 +53,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          candidate=5ce6dcab0138155cdcb05b8efa072eaa5d6a54d2
+          candidate=33819424a7c0cc5595ca448197cb640f39d9a0c5
           parent=bccb9a416f62f055c439c3ec5646362afebc1239
           test_class=CKSwiftTests/ViewConfigurationTests
           implementation_files=(
             CKSwift/ViewConfiguration.swift
+            CKSwift/ViewConfigurationRepresentable.swift
             ComponentKit/Core/Swift/CKComponentViewAttribute_SwiftBridge+Internal.h
             ComponentKit/Core/Swift/CKComponentViewAttribute_SwiftBridge.h
             ComponentKit/Core/Swift/CKComponentViewAttribute_SwiftBridge.mm
