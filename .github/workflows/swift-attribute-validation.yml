@@ -102,7 +102,7 @@ jobs:
             SWIFT_TREAT_WARNINGS_AS_ERRORS=NO
             IPHONEOS_DEPLOYMENT_TARGET=12.0
             'OTHER_CPLUSPLUSFLAGS=$(inherited) -include utility'
-            'OTHER_SWIFT_FLAGS=$(inherited) -Xcc -fno-modules-local-submodule-visibility'
+            'OTHER_SWIFT_FLAGS=$(inherited) -Xcc -Xclang -Xcc -fno-modules-local-submodule-visibility'
           )
           methods=(
             testChangedValuesAreAppliedToReusedViewAndLayer
